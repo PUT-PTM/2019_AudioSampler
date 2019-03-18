@@ -183,7 +183,7 @@
             "type": "shell",
             "command": "xdg-open",
             "args": [
-                "audiosampler.ioc"
+                "/home/dziura/STMProjects/audiosampler/audiosampler.ioc"
             ],
             "presentation": {
                 "focus": false

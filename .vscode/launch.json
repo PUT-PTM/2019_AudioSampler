@@ -7,7 +7,7 @@
             "request": "launch",
             "servertype": "openocd",
             "cwd": "${workspaceFolder}",
-            "executable": "build/audiosampler.elf",
+            "executable": "/home/dziura/STMProjects/audiosampler/build/audiosampler.elf",
             "svdFile": "/home/dziura/STMProjects/VSCODE/STM32F40x.svd",
             "configFiles": [
                 "/usr/share/openocd/scripts/interface/stlink-v2-1.cfg",
