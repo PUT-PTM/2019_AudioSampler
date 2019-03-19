@@ -25,6 +25,8 @@
 /* USER CODE BEGIN Includes */
 #include "MY_CS43L22.h"
 #include <math.h>
+#include "ff.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -34,7 +36,19 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+// dac
+#define PI 3.14159f
+#define F_SAMPLE 50000.0f
+#define F_OUT 1000.0f
 
+// sdcard
+#define  	FA_READ         	0x01
+#define  	FA_WRITE        	0x02
+#define  	FA_OPEN_EXISTING	0x00
+#define  	FA_CREATE_NEW   	0x04
+#define  	FA_CREATE_ALWAYS	0x08
+#define  	FA_OPEN_ALWAYS  	0x10
+#define  	FA_OPEN_APPEND  	0x30
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -55,10 +69,14 @@ SPI_HandleTypeDef hspi1;
 TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
-#define PI 3.14159f
+// sdcard
+char buffer[256];      	//bufor odczytu i zapisu
+static FATFS FatFs;    	//uchwyt do urz¹dzenia FatFs (dysku, karty SD...)
+FRESULT fresult;       	//do przechowywania wyniku operacji na bibliotece FatFs
+FIL file;                  //uchwyt do otwartego pliku
+WORD bytes_written;        //liczba zapisanych byte
+WORD bytes_read;           //liczba odczytanych byte
 
-#define F_SAMPLE 50000.0f
-#define F_OUT 1000.0f
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -125,16 +143,25 @@ int main(void)
   MX_TIM2_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
+
+  // dac
   CS43_Init(hi2c1, MODE_ANALOG);
   CS43_SetVolume(100);
   CS43_Enable_RightLeft(CS43_RIGHT_LEFT);
   CS43_Start();
 
   HAL_I2S_Transmit_DMA(&hi2s3, (uint16_t *)I2S_dummy, 4);
-
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-
   HAL_TIM_Base_Start_IT(&htim2);
+
+
+  // sdcard
+  fresult = f_mount(&FatFs, "", 0);
+  fresult = f_open(&file, "write.txt", FA_OPEN_ALWAYS | FA_WRITE);
+  int len = sprintf(buffer, "Audio Sampler\r\n");
+  fresult = f_write(&file, buffer, len, &bytes_written);
+  fresult = f_close (&file);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
