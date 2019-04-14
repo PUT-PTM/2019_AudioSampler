@@ -37,9 +37,9 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 // dac
-#define PI 3.14159f
-#define F_SAMPLE 50000.0f
-#define F_OUT 1000.0f
+//#define PI 3.14159f
+//#define F_SAMPLE 50000.0f
+//#define F_OUT 1000.0f
 
 // sdcard
 #define  	FA_READ         	0x01
@@ -69,14 +69,22 @@ SPI_HandleTypeDef hspi1;
 TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
+//extern const uint8_t rawAudio[123200];
+
+uint8_t buffer1[512]; //bufor odczytu i zapisu
+uint8_t buffer2[512]; //bufor odczytu i zapisu
+
+int flag = 0;
+int flag2 = 0;
+
+int count = 0;
+
 // sdcard
-char buffer[256];      	//bufor odczytu i zapisu
 static FATFS FatFs;    	//uchwyt do urz¹dzenia FatFs (dysku, karty SD...)
 FRESULT fresult;       	//do przechowywania wyniku operacji na bibliotece FatFs
-FIL file;                  //uchwyt do otwartego pliku
-WORD bytes_written;        //liczba zapisanych byte
-WORD bytes_read;           //liczba odczytanych byte
-
+FIL file;               //uchwyt do otwartego pliku
+WORD bytes_read;		//liczba odczytanych bitów
+FSIZE_t ofs = 0;        //offset pliku
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -94,17 +102,15 @@ static void MX_SPI1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-	float sin_value;
-	float sample_dt;
-	uint16_t sample_N;
-	uint16_t i_t;
+//	float sin_value;
+//	float sample_dt;
+//	uint16_t sample_N;
+//	uint16_t i_t;
+//	uint32_t dac_val;
+//  uint16_t I2S_dummy[4];
 
-	uint32_t dac_val;
 
-	uint16_t I2S_dummy[4];
 
-	extern const uint8_t rawAudio[123200];
-	int count = 0;
 /* USER CODE END 0 */
 
 /**
@@ -114,8 +120,8 @@ static void MX_SPI1_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	sample_dt = F_OUT/F_SAMPLE;
-	sample_N = F_SAMPLE/F_OUT;
+//	sample_dt = F_OUT/F_SAMPLE;
+//	sample_N = F_SAMPLE/F_OUT;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -144,23 +150,21 @@ int main(void)
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 
-  // dac
-  CS43_Init(hi2c1, MODE_ANALOG);
-  CS43_SetVolume(100);
-  CS43_Enable_RightLeft(CS43_RIGHT_LEFT);
-  CS43_Start();
-
-  HAL_I2S_Transmit_DMA(&hi2s3, (uint16_t *)I2S_dummy, 4);
-  HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-  HAL_TIM_Base_Start_IT(&htim2);
-
-
   // sdcard
   fresult = f_mount(&FatFs, "", 0);
-  fresult = f_open(&file, "write.txt", FA_OPEN_ALWAYS | FA_WRITE);
-  int len = sprintf(buffer, "Audio Sampler\r\n");
-  fresult = f_write(&file, buffer, len, &bytes_written);
-  fresult = f_close (&file);
+  fresult = f_open(&file, "dejavu.wav", FA_READ);
+
+
+  // dac
+  CS43_Init(hi2c1, MODE_ANALOG); 			//inicjalizacja interfejsu
+  CS43_SetVolume(50);             			//glosnosc
+  CS43_Enable_RightLeft(CS43_RIGHT_LEFT); 	//wybór kana³ów
+  CS43_Start();
+
+  HAL_I2S_Transmit_DMA(&hi2s3, (uint16_t *)" ", 1);
+  HAL_DAC_Start(&hdac, DAC_CHANNEL_1);	//start DAC
+  HAL_TIM_Base_Start_IT(&htim2);		//start timera
+
 
   /* USER CODE END 2 */
 
@@ -168,6 +172,18 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if(flag == 0 && flag2 == 1)
+	  	  {
+	  		  fresult = f_read(&file, buffer1, (FSIZE_t)512, &bytes_read);
+	  		  flag = 1;
+	  	  }
+
+	  	  else if(flag == 1 && flag2 == 0)
+	  	  {
+	  		  fresult = f_read(&file, buffer2, (FSIZE_t)512, &bytes_read);
+	  		  flag = 0;
+	  }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -317,7 +333,7 @@ static void MX_I2S3_Init(void)
   hi2s3.Init.Standard = I2S_STANDARD_PHILIPS;
   hi2s3.Init.DataFormat = I2S_DATAFORMAT_16B;
   hi2s3.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
-  hi2s3.Init.AudioFreq = I2S_AUDIOFREQ_48K;
+  hi2s3.Init.AudioFreq = I2S_AUDIOFREQ_44K;
   hi2s3.Init.CPOL = I2S_CPOL_LOW;
   hi2s3.Init.ClockSource = I2S_CLOCK_PLL;
   hi2s3.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_DISABLE;
@@ -388,9 +404,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 51;
+  htim2.Init.Prescaler = 83;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 99;
+  htim2.Init.Period = 19;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -462,9 +478,7 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-
 	UNUSED(htim);
-
 //	if(htim->Instance == TIM2){
 //		sin_value = sinf(i_t*2*PI*sample_dt);
 //		dac_val=(sin_value+1)*127;
@@ -476,14 +490,28 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 //			i_t = 0;
 //		}
 //	}
-
-	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1,DAC_ALIGN_12B_R, rawAudio[count]);
-	if(count>=123200){
-		count=0;
-	}
-	else{
+	if(flag2==0){
+		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1,DAC_ALIGN_8B_R, (uint32_t)buffer1[count]);
 		count++;
+		if(count==512){
+			count = 0;
+			flag2 = 1;
+			ofs = ofs + (FSIZE_t)512;
+			fresult = f_lseek(&file, ofs);
+		}
 	}
+
+	if(flag2==1){
+		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1,DAC_ALIGN_8B_R, (uint32_t)buffer2[count]);
+		count++;
+		if(count==512){
+			count = 0;
+			flag2 = 0;
+			ofs = ofs + (FSIZE_t)512;
+			fresult = f_lseek(&file, ofs);
+		}
+	}
+
 }
 /* USER CODE END 4 */
 
