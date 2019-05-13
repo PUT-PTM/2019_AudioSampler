@@ -26,7 +26,7 @@
 #include "MY_CS43L22.h"
 #include <math.h>
 #include "ff.h"
-#include "tm_stm32f4_keypad.h" //biblioteka s³u¿¹ca do obs³ugi keypada https://stm32f4-discovery.net/2014/09/library-32-matrix-keypad-stm32f4xx/
+#include "Keypad.h"
 
 /* USER CODE END Includes */
 
@@ -50,7 +50,6 @@
 #define  	FA_CREATE_ALWAYS	0x08
 #define  	FA_OPEN_ALWAYS  	0x10
 #define  	FA_OPEN_APPEND  	0x30
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -69,6 +68,7 @@ DMA_HandleTypeDef hdma_spi3_tx;
 SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
 //extern const uint8_t rawAudio[123200];
@@ -87,6 +87,10 @@ FRESULT fresult;       	//do przechowywania wyniku operacji na bibliotece FatFs
 FIL file;               //uchwyt do otwartego pliku
 WORD bytes_read;		//liczba odczytanych bitów
 FSIZE_t ofs = 0;        //offset pliku
+
+//Keypad
+	Keypad_WiresTypeDef keypad_struct;
+	bool switches[16];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -98,6 +102,7 @@ static void MX_I2C1_Init(void);
 static void MX_I2S3_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_SPI1_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -125,11 +130,6 @@ int main(void)
 //	sample_dt = F_OUT/F_SAMPLE;
 //	sample_N = F_SAMPLE/F_OUT;
 
-
-	    TM_KEYPAD_Button_t Keypad_Button;  	// Create keypad instance
-	    char buff[20];						//
-	       TM_KEYPAD_Init(TM_KEYPAD_Type_Large);	 // Initialize matrix keyboard
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -156,7 +156,31 @@ int main(void)
   MX_I2S3_Init();
   MX_TIM2_Init();
   MX_SPI1_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+
+  //keypad
+  keypad_struct.IN0_Port = GPIOE;
+  keypad_struct.IN1_Port = GPIOE;
+  keypad_struct.IN2_Port = GPIOE;
+  keypad_struct.IN3_Port = GPIOE;
+
+  keypad_struct.OUT0_Port = GPIOB;
+  keypad_struct.OUT1_Port = GPIOB;
+  keypad_struct.OUT2_Port = GPIOB;
+  keypad_struct.OUT3_Port = GPIOB;
+
+  keypad_struct.IN0pin = GPIO_PIN_7;
+  keypad_struct.IN1pin = GPIO_PIN_8;
+  keypad_struct.IN2pin = GPIO_PIN_9;
+  keypad_struct.IN3pin = GPIO_PIN_10;
+
+  keypad_struct.OUT0pin = GPIO_PIN_11;
+  keypad_struct.OUT1pin = GPIO_PIN_12;
+  keypad_struct.OUT2pin = GPIO_PIN_13;
+  keypad_struct.OUT3pin = GPIO_PIN_14;
+
+  Keypad4x4_Init(&keypad_struct);
 
   // sdcard
   fresult = f_mount(&FatFs, "", 0);
@@ -169,9 +193,10 @@ int main(void)
   CS43_Enable_RightLeft(CS43_RIGHT_LEFT); 	//wybór kana³ów
   CS43_Start();
 
-  //HAL_I2S_Transmit_DMA(&hi2s3, (uint16_t *)" ", 1);
+  HAL_I2S_Transmit_DMA(&hi2s3, (uint16_t *)" ", 1);
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);	//start DAC
-  HAL_TIM_Base_Start_IT(&htim2);		//start timera
+  HAL_TIM_Base_Start_IT(&htim2);		//start timera2
+  HAL_TIM_Base_Start_IT(&htim3);		//start timera3
 
 
   /* USER CODE END 2 */
@@ -180,68 +205,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	         Keypad_Button = TM_KEYPAD_Read();			  // Read keyboard data
-
-	         if (Keypad_Button != TM_KEYPAD_Button_NOPRESSED) {		// Keypad is pressed
-	                  switch (Keypad_Button) {
-	                      case TM_KEYPAD_Button_0:        /* Button 0 pressed */
-	                          TM_DISCO_LedToggle(HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12));
-	                          break;
-//	                      case TM_KEYPAD_Button_1:        /* Button 1 pressed */
-//	                          TM_DISCO_LedOn(LED_GREEN);
-//	                          break;
-//	                      case TM_KEYPAD_Button_2:        /* Button 2 pressed */
-//	                          TM_DISCO_LedOff(LED_GREEN);
-//	                          break;
-//	                      case TM_KEYPAD_Button_3:        /* Button 3 pressed */
-//	                          TM_DISCO_LedOn(LED_RED);
-//	                          break;
-//	                      case TM_KEYPAD_Button_4:        /* Button 4 pressed */
-//	                          TM_DISCO_LedOff(LED_RED);
-//	                          break;
-//	                      case TM_KEYPAD_Button_5:        /* Button 5 pressed */
-//	                          TM_DISCO_LedOn(LED_ORANGE);
-//	                          break;
-//	                      case TM_KEYPAD_Button_6:        /* Button 6 pressed */
-//	                          TM_DISCO_LedOff(LED_ORANGE);
-//	                          break;
-//	                      case TM_KEYPAD_Button_7:        /* Button 7 pressed */
-//	                          TM_DISCO_LedOn(LED_BLUE);
-//	                          break;
-//	                      case TM_KEYPAD_Button_8:        /* Button 8 pressed */
-//	                          TM_DISCO_LedOff(LED_BLUE);
-//	                          break;
-//	                      case TM_KEYPAD_Button_9:        /* Button 9 pressed */
-//	                          /* Do your stuff here */
-//	                          break;
-//	                      case TM_KEYPAD_Button_STAR:        /* Button STAR pressed */
-//	                          TM_DISCO_LedOn(LED_ALL);
-//	                          break;
-//	                      case TM_KEYPAD_Button_HASH:        /* Button HASH pressed */
-//	                          TM_DISCO_LedOff(LED_ALL);
-//	                          break;
-//	                      case TM_KEYPAD_Button_A:        /* Button A pressed, only on large keyboard */
-//	                          /* Do your stuff here */
-//	                          break;
-//	                      case TM_KEYPAD_Button_B:        /* Button B pressed, only on large keyboard */
-//	                          /* Do your stuff here */
-//	                          break;
-//	                      case TM_KEYPAD_Button_C:        /* Button C pressed, only on large keyboard */
-//	                          /* Do your stuff here */
-//	                          break;
-//	                      case TM_KEYPAD_Button_D:        /* Button D pressed, only on large keyboard */
-//	                          /* Do your stuff here */
-//	                          break;
-	                      default:
-	                          break;
-	                  }
-
-	                  /* Send to user */
-	                  sprintf(buff, "Pressed: %u us\n", (uint8_t)Keypad_Button);
-	                  TM_USART_Puts(USART1, buff);
-	              }
-
-
 	  if(flag == 0 && flag2 == 1)
 	  	  {
 	  		  fresult = f_read(&file, buffer1, (FSIZE_t)512, &bytes_read);
@@ -253,6 +216,7 @@ int main(void)
 	  		  fresult = f_read(&file, buffer2, (FSIZE_t)512, &bytes_read);
 	  		  flag = 0;
 	  }
+
 
     /* USER CODE END WHILE */
 
@@ -500,6 +464,51 @@ static void MX_TIM2_Init(void)
 
 }
 
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 99;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 84;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
 /** 
   * Enable DMA controller clock
   */
@@ -526,20 +535,31 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOH_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15 
                           |GPIO_PIN_4, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PC1 PC2 PC3 PC5 */
-  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_5;
+  /*Configure GPIO pins : PE7 PE8 PE9 PE10 */
+  GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB11 PB12 PB13 PB14 */
+  GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PD12 PD13 PD14 PD15 
                            PD4 */
@@ -548,12 +568,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PD0 PD1 PD2 PD3 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
 }
@@ -572,6 +586,29 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 //			i_t = 0;
 //		}
 //	}
+//
+	if(htim->Instance == TIM2){
+		  Keypad4x4_ReadKeypad(switches);
+		 		 for(uint8_t i=0; i<16; i++){
+		 			 if(switches[i]){
+						if(switches[0]){
+							 HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
+
+						 }
+						 if(switches[1]){
+							 HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
+						 }
+						 if(switches[2]){
+							 HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
+						 }
+						 if(switches[3]){
+							 HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
+						 }
+					}
+		 		 }
+
+	}
+
 	if(flag2==0){
 		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1,DAC_ALIGN_8B_R, (uint32_t)buffer1[count]);
 		count++;
