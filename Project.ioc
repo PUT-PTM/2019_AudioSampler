@@ -82,6 +82,7 @@ NVIC.PriorityGroup=NVIC_PRIORITYGROUP_4
 NVIC.SVCall_IRQn=true\:0\:0\:false\:false\:true\:false\:false
 NVIC.SysTick_IRQn=true\:0\:0\:false\:false\:true\:false\:true
 NVIC.TIM2_IRQn=true\:0\:0\:false\:false\:true\:true\:true
+NVIC.TIM3_IRQn=true\:0\:0\:false\:false\:true\:true\:true
 NVIC.UsageFault_IRQn=true\:0\:0\:false\:false\:true\:false\:false
 PA15.Locked=true
 PA15.Mode=Half_Duplex_Master
