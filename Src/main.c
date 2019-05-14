@@ -78,11 +78,11 @@ int count = 0;
 
 // sdcard
 
-static FATFS FatFs;    	//uchwyt do urz¹dzenia FatFs (dysku, karty SD...)
+static FATFS FatFs;    	//uchwyt do urzÂ¹dzenia FatFs (dysku, karty SD...)
 FRESULT fresult;		 //do przechowywania wyniku operacji na bibliotece FatFs
 struct SAMPLE {
 	FIL file;               //uchwyt do otwartego pliku
-	WORD bytes_read;		//liczba odczytanych bitów
+	WORD bytes_read;		//liczba odczytanych bitÃ³w
 	FSIZE_t ofs;        //offset pliku
 };
 
@@ -127,6 +127,7 @@ static void MX_TIM5_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -195,7 +196,7 @@ int main(void)
 	// dac
 	CS43_Init(hi2c1, MODE_ANALOG); 			//inicjalizacja interfejsu
 	CS43_SetVolume(60);             			//glosnosc
-	CS43_Enable_RightLeft(CS43_RIGHT_LEFT); 	//wybór kana³ów
+	CS43_Enable_RightLeft(CS43_RIGHT_LEFT); 	//wybÃ³r kanaÂ³Ã³w
 	CS43_Start();
 
 	HAL_I2S_Transmit_DMA(&hi2s3, (uint16_t *) " ", 1);
@@ -209,16 +210,6 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1) {
-//		if (flag == 0 && flag2 == 1) {
-//			fresult = f_read(&file, buffer1, (FSIZE_t) 512, &bytes_read);
-//			flag = 1;
-//		}
-//
-//		else if (flag == 1 && flag2 == 0) {
-//			fresult = f_read(&file, buffer2, (FSIZE_t) 512, &bytes_read);
-//			flag = 0;
-//		}
-
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -486,7 +477,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 99;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 84;
+  htim3.Init.Period = 83;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -522,6 +513,7 @@ static void MX_TIM5_Init(void)
 
   /* USER CODE END TIM5_Init 0 */
 
+
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
@@ -535,6 +527,7 @@ static void MX_TIM5_Init(void)
   htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
+
   {
     Error_Handler();
   }
@@ -621,28 +614,7 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	UNUSED(htim);
-	if (htim->Instance == TIM3) {
-//		Keypad4x4_ReadKeypad(switches);
-//		for (uint8_t i = 0; i < 16; i++) {
-//			if (switches[i]) {
-//				if (switches[0]) {
-//					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, SET);
-//
-//				}
-//				if (switches[1]) {
-//					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, SET);
-//				}
-//				if (switches[2]) {
-//					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, SET);
-//				}
-//				if (switches[3]) {
-//					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, SET);
-//				}
-//			}
-//		}
-	}
-
-	if (htim->Instance == TIM5) {
+		if (htim->Instance == TIM5) {
 		for (uint8_t i = 0; i < 2; i++) {
 			if (activeSamples[i]) {
 				if (samplesFlags[i][0] == 0 && samplesFlags[i][1] == 1) {
@@ -659,6 +631,40 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 			}
 		}
 	}
+
+	if (htim->Instance == TIM3) {
+		Keypad4x4_ReadKeypad(switches);
+		for (uint8_t i = 0; i < 16; i++) {
+			if (switches[i]) {
+				if (i==0) {
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, SET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, RESET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, RESET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, RESET);
+				}
+				if (i==1) {
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, SET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, RESET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, RESET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, RESET);
+				}
+				if (i==2) {
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, SET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, RESET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, RESET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, RESET);
+				}
+				if (i==15) {
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, SET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, RESET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, RESET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, RESET);
+				}
+
+			}
+		}
+	}
+
 
 	if (htim->Instance == TIM2) {
 		int outputByte = 0;
