@@ -37,10 +37,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-// dac
-//#define PI 3.14159f
-//#define F_SAMPLE 50000.0f
-//#define F_OUT 1000.0f
+
+#define numOfSample 4
+
 // sdcard
 #define  	FA_READ         	0x01
 #define  	FA_WRITE        	0x02
@@ -69,8 +68,10 @@ SPI_HandleTypeDef hspi1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim5;
+TIM_HandleTypeDef htim9;
 
 /* USER CODE BEGIN PV */
+
 int count = 0;
 
 // sdcard
@@ -85,11 +86,11 @@ struct SAMPLE {
 int counter = 0;
 int whichSampler = 0;
 
-struct SAMPLE samples[16];
+struct SAMPLE samples[numOfSample];
 
-uint8_t sampleBuffer[16][2][512]; //bufory odczytu i zapisu
-bool activeSamples[16];
-bool samplesFlags[16][2];
+uint8_t sampleBuffer[numOfSample][2][512]; //bufory odczytu i zapisu
+bool activeSamples[numOfSample];
+bool samplesFlags[numOfSample][2];
 
 //Keypad
 Keypad_WiresTypeDef keypad_struct;
@@ -107,6 +108,7 @@ static void MX_TIM2_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM5_Init(void);
+static void MX_TIM9_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -152,6 +154,7 @@ int main(void)
   MX_SPI1_Init();
   MX_TIM3_Init();
   MX_TIM5_Init();
+  MX_TIM9_Init();
   /* USER CODE BEGIN 2 */
 
 	//keypad
@@ -179,20 +182,20 @@ int main(void)
 
 	// sdcard
 	fresult = f_mount(&FatFs, "", 0);
-	fresult = f_open(&samples[0].file, "9.wav", FA_READ);
-	fresult = f_open(&samples[1].file, "3.wav", FA_READ);
+	fresult = f_open(&samples[0].file, "home.wav", FA_READ);
+	fresult = f_open(&samples[1].file, "ruins.wav", FA_READ);
+	fresult = f_open(&samples[2].file, "snowy.wav", FA_READ);
+	fresult = f_open(&samples[3].file, "water.wav", FA_READ);
 
-	activeSamples[0] = true;
-//	activeSamples[1] = true;
-
-	for (uint8_t i = 0; i < 16; i++) {
+	for (uint8_t i = 0; i < numOfSample; i++) {
 		samplesFlags[i][0] = 0;
 		samplesFlags[i][1] = 0;
+		activeSamples[i] = false;
 	}
 
 	// dac
 	CS43_Init(hi2c1, MODE_ANALOG); 			//inicjalizacja interfejsu
-	CS43_SetVolume(30);             			//glosnosc
+	CS43_SetVolume(50);             			//glosnosc
 	CS43_Enable_RightLeft(CS43_RIGHT_LEFT); 	//wybór kana³ów
 	CS43_Start();
 
@@ -207,16 +210,6 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1) {
-
-//		if (flag == 0 && flag2 == 1) {
-//			fresult = f_read(&file, buffer1, (FSIZE_t) 512, &bytes_read);
-//			flag = 1;
-//		}
-//
-//		else if (flag == 1 && flag2 == 0) {
-//			fresult = f_read(&file, buffer2, (FSIZE_t) 512, &bytes_read);
-//			flag = 0;
-//		}
 
     /* USER CODE END WHILE */
 
@@ -235,11 +228,11 @@ void SystemClock_Config(void)
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
   RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
-  /** Configure the main internal regulator output voltage 
+  /** Configure the main internal regulator output voltage
   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /** Initializes the CPU, AHB and APB busses clocks
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
@@ -253,7 +246,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /** Initializes the CPU, AHB and APB busses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
@@ -292,14 +285,14 @@ static void MX_DAC_Init(void)
   /* USER CODE BEGIN DAC_Init 1 */
 
   /* USER CODE END DAC_Init 1 */
-  /** DAC Initialization 
+  /** DAC Initialization
   */
   hdac.Instance = DAC;
   if (HAL_DAC_Init(&hdac) != HAL_OK)
   {
     Error_Handler();
   }
-  /** DAC channel OUT1 config 
+  /** DAC channel OUT1 config
   */
   sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
   sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
@@ -370,7 +363,7 @@ static void MX_I2S3_Init(void)
   hi2s3.Init.AudioFreq = I2S_AUDIOFREQ_48K;
   hi2s3.Init.CPOL = I2S_CPOL_LOW;
   hi2s3.Init.ClockSource = I2S_CLOCK_PLL;
-  hi2s3.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_DISABLE;
+  hi2s3.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_ENABLE;
   if (HAL_I2S_Init(&hi2s3) != HAL_OK)
   {
     Error_Handler();
@@ -438,9 +431,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 173;
+  htim2.Init.Prescaler = 524;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 50;
+  htim2.Init.Period = 9;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -528,7 +521,7 @@ static void MX_TIM5_Init(void)
 
   /* USER CODE END TIM5_Init 1 */
   htim5.Instance = TIM5;
-  htim5.Init.Prescaler = 83;
+  htim5.Init.Prescaler = 120;
   htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim5.Init.Period = 9;
   htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -554,10 +547,48 @@ static void MX_TIM5_Init(void)
 
 }
 
+/**
+  * @brief TIM9 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM9_Init(void)
+{
+
+  /* USER CODE BEGIN TIM9_Init 0 */
+
+  /* USER CODE END TIM9_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+
+  /* USER CODE BEGIN TIM9_Init 1 */
+
+  /* USER CODE END TIM9_Init 1 */
+  htim9.Instance = TIM9;
+  htim9.Init.Prescaler = 8399;
+  htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim9.Init.Period = 1999;
+  htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim9.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim9) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim9, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM9_Init 2 */
+
+  /* USER CODE END TIM9_Init 2 */
+
+}
+
 /** 
   * Enable DMA controller clock
   */
-static void MX_DMA_Init(void) 
+static void MX_DMA_Init(void)
 {
   /* DMA controller clock enable */
   __HAL_RCC_DMA1_CLK_ENABLE();
@@ -590,7 +621,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15 
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15
                           |GPIO_PIN_4, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PE7 PE8 PE9 PE10 */
@@ -606,9 +637,9 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PD12 PD13 PD14 PD15 
+  /*Configure GPIO pins : PD12 PD13 PD14 PD15
                            PD4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15 
+  GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15
                           |GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -621,7 +652,7 @@ static void MX_GPIO_Init(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	UNUSED(htim);
 	if (htim->Instance == TIM5) {
-		for (uint8_t i = 0; i < 2; i++) {
+		for (uint8_t i = 0; i < numOfSample; i++) {
 			if (activeSamples[i]) {
 				if (samplesFlags[i][0] == 0 && samplesFlags[i][1] == 1) {
 					fresult = f_read(&samples[i].file, sampleBuffer[i][0],
@@ -639,66 +670,85 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	}
 
 	if (htim->Instance == TIM3) {
-		Keypad4x4_ReadKeypad(switches);
-		for (uint8_t i = 0; i < 16; i++) {
-			if (switches[i]) {
-				if (i == 0) {
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, SET);
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, RESET);
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, RESET);
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, RESET);
-				}
-				if (i == 1) {
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, SET);
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, RESET);
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, RESET);
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, RESET);
-				}
-				if (i == 2) {
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, SET);
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, RESET);
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, RESET);
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, RESET);
-				}
-				if (i == 15) {
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, SET);
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, RESET);
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, RESET);
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, RESET);
-				}
 
-			}
-		}
-	}
-
-//	if (activeSamples[i]) {
-//		if (samplesFlags[i][1] == 0) {
-//			oneByte =
-//					((int) ((int) oneByte
-//							+ (int) sampleBuffer[i][0][count])
-//							- (int) (((int) ((int) oneByte
-//									* (int) sampleBuffer[i][0][count]))
-//									/ 255));
-//		}
-//
-//		if (samplesFlags[i][1] == 1) {
-//			oneByte =
-//					((int) ((int) oneByte
-//							+ (int) sampleBuffer[i][1][count])
-//							- (int) (((int) ((int) oneByte
-//									* (int) sampleBuffer[i][1][count]))
-//									/ 255));
-//		}
-//	}
-
+	    Keypad4x4_ReadKeypad(switches);
+	    for (uint8_t i = 0; i < 16; i++) {
+	      if (switches[i]) {
+	    	  for(int i = 0; i< 10000; i++);
+	        if (switches[8]) {
+	        	activeSamples[0] = false;
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, SET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, RESET);
+	          for(int i = 0; i<10000;i++);
+	        }
+	        if (switches[9]) {
+	        	activeSamples[1] = false;
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, SET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, RESET);
+	          for(int i = 0; i<10000;i++);
+	        }
+	        if (switches[10]) {
+	        	activeSamples[2] = false;
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, SET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, RESET);
+	          for(int i = 0; i<10000;i++);
+	        }
+	        if (switches[11]) {
+	        	activeSamples[3] = false;
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, SET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, RESET);
+	          for(int i = 0; i<10000;i++);
+	        }
+	        if (switches[12]) {
+	        	activeSamples[0] = true;
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, SET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, RESET);
+	          for(int i = 0; i<10000;i++);
+	        }
+	        if (switches[13]) {
+	        	activeSamples[1] = true;
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, SET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, RESET);
+	          for(int i = 0; i<10000;i++);
+	        }
+	        if (switches[14]) {
+	        	activeSamples[2] = true;
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, SET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, RESET);
+	          for(int i = 0; i<10000;i++);
+	        }
+	        if (switches[15]) {
+	        	activeSamples[3] = true;
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, SET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, RESET);
+	          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, RESET);
+	          for(int i = 0; i<10000;i++);
+	        }
+	      }
+	    }
+	  }
 	if (htim->Instance == TIM2) {
 
-		float output16b = 0;
+		double output16b = 0;
 
-		for (uint8_t i = 0; i < 2; i++) {
+		for (uint8_t i = 0; i < numOfSample; i++) {
 			if (activeSamples[i]) {
-				uint16_t data16b = 0;
-				uint8_t first8b = 0, second8b = 0, numOfBuffer = 0;
+				uint8_t first8b = 0, numOfBuffer = 0;
 
 				if (activeSamples[i]) {
 					if (samplesFlags[i][1] == 0) {
@@ -708,29 +758,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 					}
 
 					first8b = sampleBuffer[i][numOfBuffer][count];
-					int c = count+1;
-					second8b = sampleBuffer[i][numOfBuffer][c];
 
-					data16b =
-					    (uint16_t) (
-					        (((uint16_t) second8b << 8) & 0xFF00)
-							| (((uint16_t) first8b) & 0x00FF) );
-
-					data16b = (data16b+32768);
-
-//					output16b = ((uint16_t) ((uint16_t) output16b
-//							+ (uint16_t) data16b)
-//							- (uint16_t) (((uint16_t) ((uint16_t) output16b
-//									* (uint16_t) output16b)) / 65536));
-					output16b = data16b;
+					output16b = (output16b + first8b) - ((output16b*first8b)/4096);
 				}
 			}
 
 		}
 
-		count += 2;
+		count += 1;
 		if (count >= 512) {
-			for (uint8_t i = 0; i < 2; i++) {
+			for (uint8_t i = 0; i < numOfSample; i++) {
 				if (activeSamples[i]) {
 					count = 0;
 					samples[i].ofs = samples[i].ofs + (FSIZE_t) 512;
@@ -744,8 +781,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 			}
 		}
 
-		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_L,
-				(uint16_t) (output16b));
+		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
+				(uint16_t) ((output16b)));
 
 	}
 
@@ -773,7 +810,7 @@ void Error_Handler(void)
   * @retval None
   */
 void assert_failed(uint8_t *file, uint32_t line)
-{ 
+{
   /* USER CODE BEGIN 6 */
 	/* User can add his own implementation to report the file name and line number,
 	 tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
